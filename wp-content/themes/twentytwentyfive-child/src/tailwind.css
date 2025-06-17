@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* WordPress fixes */
+.wp-block {
+    @apply max-w-4xl mx-auto px-4;
+}
+.alignwide {
+    @apply max-w-screen-xl;
+}

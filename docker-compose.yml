@@ -1,0 +1,84 @@
+networks:
+  wordpress-network:
+    driver: bridge
+  traefik-network:
+    driver: bridge
+
+volumes:
+  mariadb-data:
+  wordpress-data:
+
+services:
+  mariadb:
+    image: ${WORDPRESS_MARIADB_IMAGE_TAG}
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    environment:
+      MARIADB_DATABASE: ${WORDPRESS_DB_NAME}
+      MARIADB_USER: ${WORDPRESS_DB_USER}
+      MARIADB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${WORDPRESS_DB_ADMIN_PASSWORD}
+    networks:
+      - wordpress-network
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-u${WORDPRESS_DB_USER}", "-p${WORDPRESS_DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  wordpress:
+    image: wordpress:6.8.1-apache
+    volumes:
+      - wordpress-data:/var/www/html
+      - ./wp-content/themes:/var/www/html/wp-content/themes
+      - ./wp-config.php:/var/www/html/wp-config.php
+    environment:
+      WORDPRESS_DB_HOST: mariadb:3306
+      WORDPRESS_DB_USER: ${WORDPRESS_DB_USER}
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+      WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME}
+      WORDPRESS_TABLE_PREFIX: ${WORDPRESS_TABLE_PREFIX}
+      WORDPRESS_BLOG_NAME: ${WORDPRESS_BLOG_NAME}
+      WORDPRESS_FIRST_NAME: ${WORDPRESS_ADMIN_NAME}
+      WORDPRESS_LAST_NAME: ${WORDPRESS_ADMIN_LASTNAME}
+      WORDPRESS_USERNAME: ${WORDPRESS_ADMIN_USERNAME}
+      WORDPRESS_PASSWORD: ${WORDPRESS_ADMIN_PASSWORD}
+      WORDPRESS_EMAIL: ${WORDPRESS_ADMIN_EMAIL}
+      WORDPRESS_DEBUG: "0"
+      APACHE_SERVER_NAME: localhost
+    networks:
+      - wordpress-network
+      - traefik-network
+    ports:
+      - "8080:80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/wp-includes/js/jquery/jquery.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    restart: unless-stopped
+
+  traefik:
+    image: ${TRAEFIK_IMAGE_TAG}
+    command:
+      - "--log.level=${TRAEFIK_LOG_LEVEL}"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedByDefault=false"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - traefik-network
+    ports:
+      - "80:80"
+      - "8090:8080"
+    labels:
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.localhost`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+    restart: unless-stopped

@@ -1,0 +1,30 @@
+# ================
+# Core Exclusions
+# ================
+node_modules/
+dist/
+build/
+.cache/
+
+# ================
+# System Files
+# ================
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+
+# ================
+# Build Artifacts
+# ================
+*.min.css
+*.min.js
+*.map
+*.asset.php
+
+# ================
+# Editor/IDE
+# ================
+.idea/
+.vscode/
+*.code-workspace
